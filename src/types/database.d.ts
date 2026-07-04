@@ -1,5 +1,9 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
+export type Channel = Database["public"]["Tables"]["channels"]["Row"];
+export type Message = Database["public"]["Tables"]["messages"]["Row"];
+export type Upvote = Database["public"]["Tables"]["upvotes"]["Row"];
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -71,6 +75,29 @@ export type Database = {
           }
         ];
       };
+      upvotes: {
+        Row: {
+          message_id: string;
+          username: string;
+        };
+        Insert: {
+          message_id: string;
+          username: string;
+        };
+        Update: {
+          message_id?: string;
+          username?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "upvotes_message_id_fkey";
+            columns: ["message_id"];
+            isOneToOne: false;
+            referencedRelation: "messages";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -86,9 +113,6 @@ export type Database = {
     };
   };
 };
-
-export type Channel = Database["public"]["Tables"]["channels"]["Row"];
-export type Message = Database["public"]["Tables"]["messages"]["Row"];
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 

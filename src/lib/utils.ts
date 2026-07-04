@@ -1,8 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { supabase } from "./supabaseClient";
-import type { Context } from "../types/context.types";
-import type { Message } from "../types/database.types";
+import type { Context } from "../types/context.d";
+import type { Message } from "../types/database.d";
 
 //#region Generated
 export function cn(...inputs: ClassValue[]) {
@@ -29,8 +29,7 @@ export function findMessageById(context: Context, id: string): Message | null {
 }
 export async function sendMessage(
   context: Context, // Use the username and channel inside of it.
-  message: string,
-  parentId?: string
+  message: string
 ) {
   if (!message.trim() || !context.activeChannelId) return;
   if (!context.username.trim()) return;
@@ -39,7 +38,7 @@ export async function sendMessage(
     channel_id: context.activeChannelId,
     content: message,
     username: context.username,
-    parent_id: parentId,
+    parent_id: context.replyMessagesId.get(context.activeChannelId),
     upvote_count: 0
   };
 
