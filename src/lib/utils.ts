@@ -38,8 +38,7 @@ export async function sendMessage(
     channel_id: context.activeChannelId,
     content: message,
     username: context.username,
-    parent_id: context.replyMessagesId.get(context.activeChannelId),
-    upvote_count: 0
+    parent_id: context.replyMessagesId.get(context.activeChannelId)
   };
 
   const { data, error } = await supabase.from("messages").insert([newRow]).select();
@@ -48,10 +47,10 @@ export async function sendMessage(
     return;
   }
 
-  if (data && data.length > 0) {
-    const savedMessage = data[0] as Message;
-    // Append operation.
-    const currentMessages = context.messages.get(context.activeChannelId) || [];
-    context.messages.set(context.activeChannelId, [...currentMessages, savedMessage]);
-  }
+  // if (data && data.length > 0) {
+  //   const savedMessage = data[0] as Message;
+  //   // Append operation.
+  //   const currentMessages = context.messages.get(context.activeChannelId) || [];
+  //   context.messages.set(context.activeChannelId, [...currentMessages, savedMessage]);
+  // }
 }

@@ -1,8 +1,8 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
-
 export type Channel = Database["public"]["Tables"]["channels"]["Row"];
 export type Message = Database["public"]["Tables"]["messages"]["Row"];
 export type Upvote = Database["public"]["Tables"]["upvotes"]["Row"];
+
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -37,7 +37,6 @@ export type Database = {
           created_at: string;
           id: string;
           parent_id: string | null;
-          upvote_count: number;
           username: string;
         };
         Insert: {
@@ -46,7 +45,6 @@ export type Database = {
           created_at?: string;
           id?: string;
           parent_id?: string | null;
-          upvote_count?: number;
           username: string;
         };
         Update: {
@@ -55,7 +53,6 @@ export type Database = {
           created_at?: string;
           id?: string;
           parent_id?: string | null;
-          upvote_count?: number;
           username?: string;
         };
         Relationships: [

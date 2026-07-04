@@ -1,15 +1,19 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
-  import { fetchDatabaseData } from "$lib/supabaseClient";
+  import { fetchDatabaseData, supabase } from "$lib/supabaseClient";
 
   import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
-  import type { Channel, Message } from "../types/database.d";
   import Button from "$lib/components/ui/button/button.svelte";
   import MessageBubble from "$lib/components/MessageBubble.svelte";
-  import type { Context } from "../types/context.d";
   import { findMessageById, sendMessage } from "$lib/utils";
+
+  import type { Channel, Message } from "../types/database.d";
+  import type { Context } from "../types/context.d";
   import type { Upvote } from "../types/database";
+  import { toggleMode } from "mode-watcher";
+  import { MoonIcon, SunIcon } from "@lucide/svelte";
+  import { Input } from "$lib/components/ui/input";
 
   // Current user message box content.
   let messageInputText: string = $state("");
@@ -25,38 +29,81 @@
   });
 
   // Fetch all the channel and message data on mount.
-  onMount(async () => {
-    const {
-      channelsData: remoteChannelsData,
-      messagesData: remoteMessagesData,
-      upvotesData: remoteUpvotesData
-    } = await fetchDatabaseData();
-    context.channels = remoteChannelsData as Channel[];
-    if (context.channels.length == 0) return;
+  onMount(() => {
+    const fetchData = async () => {
+      const {
+        channelsData: remoteChannelsData,
+        messagesData: remoteMessagesData,
+        upvotesData: remoteUpvotesData
+      } = await fetchDatabaseData();
+      context.channels = remoteChannelsData as Channel[];
+      if (context.channels.length == 0) return;
 
-    context.activeChannelId = context.channels[0]!["id"];
-    (remoteUpvotesData as Map<string, Upvote[]>).forEach((value, key) => {
-      context.upvotes.set(key, value);
-    });
-    (remoteMessagesData as Map<string, Message[]>).forEach((value, key) => {
-      context.messages.set(key, value);
-    });
+      context.activeChannelId = context.channels[0]!["id"];
+      (remoteUpvotesData as Map<string, Upvote[]>).forEach((value, key) => {
+        context.upvotes.set(key, value);
+      });
+      (remoteMessagesData as Map<string, Message[]>).forEach((value, key) => {
+        context.messages.set(key, value);
+      });
+    };
+    fetchData();
+
+    const channel = supabase
+      .channel("messages_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages"
+        },
+        (payload) => {
+          const eventType = payload.eventType;
+          let oldMessages: Message[] = context.messages.get(context.activeChannelId!) ?? [];
+          switch (eventType) {
+            case "INSERT":
+              context.messages.set(context.activeChannelId!, [
+                ...oldMessages,
+                payload.new as Message
+              ]);
+              break;
+            case "UPDATE":
+              break;
+            case "DELETE":
+              context.messages.set(
+                context.activeChannelId!,
+                oldMessages.filter((msg) => msg.id != payload.old["id"])
+              );
+
+              break;
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   });
 </script>
 
 <div class="relative flex h-screen w-screen overflow-hidden">
   <!-- #region Base -->
   <div
-    class="relative flex-3 flex flex-col justify-center items-center p-3 bg-slate-800 text-slate-100"
+    class="relative flex-3 flex flex-col justify-center items-center p-3 bg-background text-slate-100"
   >
+    <Button onclick={toggleMode} variant="outline" size="icon" class="absolute top-1 left-1">
+      <SunIcon
+        class="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90"
+      />
+      <MoonIcon
+        class="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0"
+      />
+      <span class="sr-only">Toggle theme</span>
+    </Button>
     <div class="w-max">
       <h3>Account: <i>{context.username}</i></h3>
-      <input
-        type="text"
-        bind:value={usernameInputText}
-        placeholder="Username"
-        class="h-min bg-slate-900 border border-slate-800 px-4 py-2 text-sm text-white focus:outline-none focus:border-slate-700"
-      />
+      <Input type="text" bind:value={usernameInputText} placeholder="Username" />
 
       <Button
         onclick={() => {
@@ -68,12 +115,14 @@
   <!-- #endregion -->
 
   <!-- #region Chatroom-->
-  <div class="relative flex-1 flex flex-col h-full bg-slate-950 text-slate-100 font-sans">
+  <div
+    class="relative flex-1 flex flex-col h-full bg-secondary text-secondary-foreground font-sans"
+  >
     <div class="p-4 truncate">
       <span><b>Discussions</b> # {context.activeChannelId}</span>
     </div>
     <!-- Message Bubble Area -->
-    <ScrollArea class="relative w-full h-40 flex-1 flex flex-col bg-slate-950">
+    <ScrollArea class="relative w-full h-40 flex-1 flex flex-col ">
       <div class="flex flex-col h-full p-6 space-y-4 max-w-4xl">
         {#if context.activeChannelId != null}
           {#each context.messages.get(context.activeChannelId) as message (message.id)}
@@ -97,7 +146,7 @@
                     context.upvotes
                       .get(id)
                       ?.filter(
-                        (vote) => vote.message_id != id && vote.username != context.username
+                        (vote) => vote.message_id != id || vote.username != context.username
                       ) || [];
                   context.upvotes.set(id, newUpvotes);
                 } else {
@@ -117,7 +166,7 @@
       </div>
       {#if context.replyMessagesId.get(context.activeChannelId ?? "")}
         <div
-          class="absolute left-4 right-4 bottom-4 flex justify-between p-4 rounded bg-slate-600 shadow"
+          class="absolute left-4 right-4 bottom-4 flex justify-between p-4 border rounded bg-card text-card-foreground shadow"
         >
           <div>
             {findMessageById(context, context.replyMessagesId.get(context.activeChannelId!)!)!
@@ -136,13 +185,12 @@
     </ScrollArea>
 
     <!-- Send Message Area -->
-    <div class="relative border-slate-800 bg-slate-950">
+    <div class="relative border-sidebar bg-sidebar-accent">
       <div class="max-w-4xl mp-4 p-4 mx-auto flex gap-2 border-t border-slate-800">
-        <input
+        <Input
           type="text"
           bind:value={messageInputText}
           placeholder="Message #{context.activeChannelId}"
-          class="flex-1 bg-slate-900 border border-slate-800 px-4 py-2 text-sm text-white focus:outline-none focus:border-slate-700"
         />
         <Button
           onclick={async () => {
@@ -150,7 +198,7 @@
             context.replyMessagesId.set(context.activeChannelId!, null);
             messageInputText = "";
           }}
-          class="bg-slate-600 cursor-pointer"
+          class="cursor-pointer"
         >
           Send
         </Button>
@@ -158,7 +206,7 @@
     </div>
 
     <!-- Bottom Region (Channel List) -->
-    <div class="flex w-full bg-slate-900 border-r border-slate-800">
+    <div class="flex w-full bg-sidebar border-r border border-sidebar text-sidebar">
       <!-- Horizontal list of Channels -->
       <ScrollArea class="flex flex-1 p-2">
         <div class="flex space-y-1">
@@ -169,8 +217,8 @@
               }}
               class="h-full text-left px-3 py-2 text-sm transition-color duration-200 cursor-pointer
 					{context.activeChannelId === channel.id
-                ? 'bg-slate-600 text-white'
-                : 'bg-slate-700 hover:bg-slate-500/50 text-slate-100 hover:text-slate-200'}"
+                ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                : 'bg-sidebar-accent text-sidebar-accent-foreground'}"
             >
               {channel.name}
             </Button>
