@@ -15,6 +15,8 @@
   import { MoonIcon, SunIcon } from "@lucide/svelte";
   import { Input } from "$lib/components/ui/input";
 
+  import { setChatroomContext } from "$lib/chatroomContext";
+
   // Current user message box content.
   let messageInputText: string = $state("");
   let usernameInputText: string = $state("");
@@ -27,6 +29,8 @@
     replyMessagesId: new SvelteMap(),
     upvotes: new SvelteMap()
   });
+
+  setChatroomContext(context);
 
   // Fetch all the channel and message data on mount.
   onMount(() => {
@@ -126,39 +130,7 @@
       <div class="flex flex-col h-full p-6 space-y-4 max-w-4xl">
         {#if context.activeChannelId != null}
           {#each context.messages.get(context.activeChannelId) as message (message.id)}
-            <MessageBubble
-              {message}
-              {context}
-              onDeleteClick={(id: string) => {
-                let currentMessages: Message[] | undefined = context.messages.get(
-                  context.activeChannelId!
-                );
-                if (!currentMessages) return;
-                let updatedMessages = currentMessages.filter((v) => v.id !== id);
-                context.messages.set(context.activeChannelId!, updatedMessages);
-              }}
-              onReplyClick={(id: string) => {
-                context.replyMessagesId.set(context.activeChannelId!, id);
-              }}
-              onUpvoteClick={(id: string, isDeleted: boolean) => {
-                if (isDeleted) {
-                  let newUpvotes: Upvote[] =
-                    context.upvotes
-                      .get(id)
-                      ?.filter(
-                        (vote) => vote.message_id != id || vote.username != context.username
-                      ) || [];
-                  context.upvotes.set(id, newUpvotes);
-                } else {
-                  let newUpvote: Upvote = {
-                    message_id: id,
-                    username: context.username
-                  };
-                  let oldUpvotes: Upvote[] = context.upvotes.get(id) || [];
-                  context.upvotes.set(id, [...oldUpvotes, newUpvote]);
-                }
-              }}
-            />
+            <MessageBubble {message} />
           {/each}
         {:else}
           <p class="align-middle self-center">No active channel selected</p>
@@ -166,7 +138,10 @@
       </div>
       {#if context.replyMessagesId.get(context.activeChannelId ?? "")}
         <div
-          class="absolute left-4 right-4 bottom-4 flex justify-between p-4 border rounded bg-card text-card-foreground shadow"
+          class="
+					absolute left-4 right-4 bottom-4
+					flex justify-between
+					p-4 border rounded bg-card text-card-foreground shadow"
         >
           <div>
             {findMessageById(context, context.replyMessagesId.get(context.activeChannelId!)!)!

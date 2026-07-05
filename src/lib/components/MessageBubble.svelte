@@ -5,35 +5,33 @@
   import { ArrowUp } from "@lucide/svelte";
   import Button from "./ui/button/button.svelte";
 
-  import type { Context } from "../../types/context.d";
+  import { useChatroomContext } from "$lib/chatroomContext";
+
   import type { Message, Upvote } from "../../types/database.d";
 
   const {
-    message,
-    context,
-    onDeleteClick,
-    onReplyClick,
-    onUpvoteClick
+    message
   }: {
     message: Message;
-    context: Context;
-    onDeleteClick?: (id: string) => void;
-    onReplyClick?: (id: string) => void;
-    onUpvoteClick?: (id: string, isDelete: boolean) => void;
   } = $props();
-  let parentMessage: Message | null = $state(null);
-  if (message.parent_id) {
-    parentMessage = findMessageById(context, message.parent_id);
-  }
+
+  const context = useChatroomContext();
+  const parentMessage = $derived(
+    message.parent_id ? findMessageById(context, message.parent_id) : null
+  );
 </script>
 
 <!-- Message Bubble in Chatroom -->
 <div
-  class="h-min w-max max-w-56 p-3 rounded text-wrap break-all bg-card
+  class="group/bubble relative h-min w-max max-w-56 p-3 rounded bg-card border
 	{message.username == context.username ? 'self-end' : 'self-start'}"
 >
   <ContextMenu.Root>
-    <ContextMenu.Trigger class="flex flex-col items-start text-card-foreground">
+    <ContextMenu.Trigger
+      class="
+			flex flex-col items-start 
+			"
+    >
       {#if parentMessage}
         <div class="flex items-center gap-1 mb-1 px-1 max-w-full truncate text-xs">
           <span class="font-semibold">{parentMessage.username}</span>
@@ -42,6 +40,14 @@
       {/if}
       <b>{message.username}</b><br />
       {message.content}
+      <span
+        class="
+			absolute left-0 bottom-full
+			truncate italic text-xs
+			hidden
+			group-hover/bubble:block
+			">{new Date(message.created_at).toLocaleString()}</span
+      >
       <Button
         onclick={async () => {
           if (
@@ -52,7 +58,13 @@
               .delete()
               .eq("message_id", message.id)
               .eq("username", context.username);
-            onUpvoteClick?.(message.id, true);
+            let newUpvotes: Upvote[] =
+              context.upvotes
+                .get(message.id)
+                ?.filter(
+                  (vote) => vote.message_id != message.id || vote.username != context.username
+                ) || [];
+            context.upvotes.set(message.id, newUpvotes);
           } else {
             let newRow: Upvote = {
               message_id: message.id,
@@ -62,7 +74,12 @@
             if (error) {
               throw error;
             }
-            onUpvoteClick?.(message.id, false);
+            let newUpvote: Upvote = {
+              message_id: message.id,
+              username: context.username
+            };
+            let oldUpvotes: Upvote[] = context.upvotes.get(message.id) || [];
+            context.upvotes.set(message.id, [...oldUpvotes, newUpvote]);
           }
         }}
         class="text-xs self-end rounded cursor-pointer"
@@ -71,11 +88,11 @@
         {context.upvotes.get(message.id)?.length || 0}
       </Button>
     </ContextMenu.Trigger>
-    <ContextMenu.Content>
+    <ContextMenu.Content class="rounded">
       <!-- Handle Reply -->
       <ContextMenu.Item
         onclick={async () => {
-          onReplyClick?.(message.id);
+          context.replyMessagesId.set(context.activeChannelId!, message.id);
         }}>Reply</ContextMenu.Item
       >
       <ContextMenu.Separator />
@@ -87,7 +104,13 @@
             if (res.error) {
               throw res.error;
             }
-            onDeleteClick?.(message.id);
+            // Update the context.
+            let currentMessages: Message[] | undefined = context.messages.get(
+              context.activeChannelId!
+            );
+            if (!currentMessages) return;
+            let updatedMessages = currentMessages.filter((v) => v.id !== message.id);
+            context.messages.set(context.activeChannelId!, updatedMessages);
           }}
           variant="destructive">Delete</ContextMenu.Item
         >
