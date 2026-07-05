@@ -7,16 +7,18 @@
   import Button from "$lib/components/ui/button/button.svelte";
   import MessageBubble from "$lib/components/MessageBubble.svelte";
   import { findMessageById, sendMessage } from "$lib/utils";
+  import { toggleMode } from "mode-watcher";
+  import { MoonIcon, SunIcon } from "@lucide/svelte";
+  import { Input } from "$lib/components/ui/input";
+  import { tick } from "svelte";
 
   import type { Channel, Message } from "../types/database.d";
   import type { Context } from "../types/context.d";
   import type { Upvote } from "../types/database";
-  import { toggleMode } from "mode-watcher";
-  import { MoonIcon, SunIcon } from "@lucide/svelte";
-  import { Input } from "$lib/components/ui/input";
 
   import { setChatroomContext } from "$lib/chatroomContext";
 
+  let viewportElement: HTMLElement | null = $state(null);
   // Current user message box content.
   let messageInputText: string = $state("");
   let usernameInputText: string = $state("");
@@ -89,6 +91,32 @@
       supabase.removeChannel(channel);
     };
   });
+
+  $effect(() => {
+    const activeChannel = context.activeChannelId;
+    console.log("effect");
+    const messages = activeChannel ? context.messages.get(activeChannel) : null;
+
+    if (viewportElement && messages) {
+      // Access length to establish a dependency on messages updates
+      const messageCount = messages.length;
+
+      tick().then(() => {
+        console.log("tick");
+        if (viewportElement) {
+          const percentage =
+            viewportElement.scrollTop /
+            (viewportElement.scrollHeight - viewportElement.clientHeight);
+          if (percentage > 0.8) {
+            viewportElement.scrollTo({
+              top: viewportElement.scrollHeight,
+              behavior: "smooth"
+            });
+          }
+        }
+      });
+    }
+  });
 </script>
 
 <div class="relative flex h-screen w-screen overflow-hidden">
@@ -126,7 +154,10 @@
       <span><b>Discussions</b> # {context.activeChannelId}</span>
     </div>
     <!-- Message Bubble Area -->
-    <ScrollArea class="relative w-full h-40 flex-1 flex flex-col ">
+    <ScrollArea
+      bind:viewportRef={viewportElement}
+      class="relative w-full h-40 flex-1 flex flex-col "
+    >
       <div class="flex flex-col h-full p-6 space-y-4 max-w-4xl">
         {#if context.activeChannelId != null}
           {#each context.messages.get(context.activeChannelId) as message (message.id)}
