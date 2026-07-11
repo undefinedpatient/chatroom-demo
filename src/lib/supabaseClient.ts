@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Channel, Message } from "../types/database.d";
+import type { Channel, Database, Message, Upvote, User } from "../types/database.d";
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from "$env/static/public";
-import type { Upvote } from "../types/database";
+import type { Context } from "../types/context";
 
 export const supabase: SupabaseClient = createClient<Database>(
   PUBLIC_SUPABASE_URL,
@@ -22,20 +22,48 @@ export async function fetchDatabaseData() {
   const { data: remoteUpvotesData, error: remoteUpvotesError } = await supabase
     .from("upvotes")
     .select("*");
+  const { data: remoteUsersData, error: remoteUsersError } = await supabase
+    .from("users")
+    .select("*");
   if (remoteChannelsError) {
-    console.error(remoteChannelsError.message);
     throw remoteChannelsError;
   }
   if (remoteMessagesError) {
-    console.error(remoteMessagesError.message);
     throw remoteMessagesError;
   }
   if (remoteUpvotesError) {
-    console.error(remoteUpvotesError.message);
     throw remoteUpvotesError;
   }
+  if (remoteUsersError) {
+    throw remoteUsersError;
+  }
   const channelsData: Channel[] = remoteChannelsData as Channel[];
+  const usersData: User[] = remoteUsersData as User[];
   const messagesData = Map.groupBy(remoteMessagesData, (value: Message) => value.channel_id);
   const upvotesData = Map.groupBy(remoteUpvotesData, (value: Upvote) => value.message_id);
-  return { channelsData, messagesData, upvotesData };
+  return { channelsData, messagesData, upvotesData, usersData };
+}
+
+/**
+ * @description Send a {@link Message} to DB.
+ */
+export async function sendMessage(
+  context: Context, // Use the username and channel inside of it.
+  message: string
+): Promise<void> {
+  if (!message.trim() || !context.activeChannelId) return;
+  if (!context.userId.trim()) return;
+
+  const newMessage = {
+    channel_id: context.activeChannelId,
+    content: message,
+    user_id: context.userId,
+    parent_id: context.replyMessagesId.get(context.activeChannelId) ?? null
+  };
+
+  const { data, error } = await supabase.from("messages").insert([newMessage]).select();
+  if (error) {
+    console.error("Failed to send message to database:", error.message);
+    return;
+  }
 }

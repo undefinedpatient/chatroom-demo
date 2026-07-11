@@ -1,10 +1,9 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { supabase } from "./supabaseClient";
 import type { Context } from "../types/context.d";
-import type { Message } from "../types/database.d";
+import type { Message, User } from "../types/database";
 
-//#region Generated
+//#region Generated Helpers
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -27,30 +26,8 @@ export function findMessageById(context: Context, id: string): Message | null {
     ?.find((value: Message) => value.id === id);
   return msg ?? null;
 }
-export async function sendMessage(
-  context: Context, // Use the username and channel inside of it.
-  message: string
-) {
-  if (!message.trim() || !context.activeChannelId) return;
-  if (!context.username.trim()) return;
 
-  const newRow = {
-    channel_id: context.activeChannelId,
-    content: message,
-    username: context.username,
-    parent_id: context.replyMessagesId.get(context.activeChannelId)
-  };
-
-  const { data, error } = await supabase.from("messages").insert([newRow]).select();
-  if (error) {
-    console.error("Failed to send message to database:", error.message);
-    return;
-  }
-
-  // if (data && data.length > 0) {
-  //   const savedMessage = data[0] as Message;
-  //   // Append operation.
-  //   const currentMessages = context.messages.get(context.activeChannelId) || [];
-  //   context.messages.set(context.activeChannelId, [...currentMessages, savedMessage]);
-  // }
+export function findUserById(context: Context, id: string): User | null {
+  const user = context.users.find((value: Message) => value.id === id);
+  return user ?? null;
 }

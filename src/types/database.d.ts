@@ -1,6 +1,8 @@
 export type Channel = Database["public"]["Tables"]["channels"]["Row"];
 export type Message = Database["public"]["Tables"]["messages"]["Row"];
 export type Upvote = Database["public"]["Tables"]["upvotes"]["Row"];
+export type User = Database["public"]["Tables"]["users"]["Row"];
+export type UserType = "Instructor" | "TeachingAssistant" | "Student";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -17,16 +19,19 @@ export type Database = {
           created_at: string;
           id: string;
           name: string;
+          user_ids: Json | null;
         };
         Insert: {
           created_at?: string;
           id?: string;
           name: string;
+          user_ids?: Json | null;
         };
         Update: {
           created_at?: string;
           id?: string;
           name?: string;
+          user_ids?: Json | null;
         };
         Relationships: [];
       };
@@ -37,7 +42,7 @@ export type Database = {
           created_at: string;
           id: string;
           parent_id: string | null;
-          username: string;
+          user_id: string | null;
         };
         Insert: {
           channel_id?: string | null;
@@ -45,7 +50,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           parent_id?: string | null;
-          username: string;
+          user_id?: string | null;
         };
         Update: {
           channel_id?: string | null;
@@ -53,7 +58,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           parent_id?: string | null;
-          username?: string;
+          user_id?: string | null;
         };
         Relationships: [
           {
@@ -69,21 +74,28 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "messages";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
           }
         ];
       };
       upvotes: {
         Row: {
           message_id: string;
-          username: string;
+          user_id: string;
         };
         Insert: {
           message_id: string;
-          username: string;
+          user_id: string;
         };
         Update: {
           message_id?: string;
-          username?: string;
+          user_id?: string;
         };
         Relationships: [
           {
@@ -92,8 +104,33 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "messages";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "upvotes_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
           }
         ];
+      };
+      users: {
+        Row: {
+          id: string;
+          type: string;
+          username: string;
+        };
+        Insert: {
+          id?: string;
+          type: string;
+          username: string;
+        };
+        Update: {
+          id?: string;
+          type?: string;
+          username?: string;
+        };
+        Relationships: [];
       };
     };
     Views: {

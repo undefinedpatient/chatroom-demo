@@ -1,17 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { fetchDatabaseData, supabase } from "$lib/supabaseClient";
+  import { sendMessage, supabase } from "$lib/supabaseClient";
 
   import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
   import Button from "$lib/components/ui/button/button.svelte";
   import MessageBubble from "$lib/components/MessageBubble.svelte";
-  import { findMessageById, sendMessage } from "$lib/utils";
+  import { findMessageById } from "$lib/utils";
   import { Input } from "$lib/components/ui/input";
   import { tick } from "svelte";
 
-  import type { Channel, Message } from "$lib/../types/database.d";
+  import type { Message } from "$lib/../types/database.d";
   import type { Context } from "$lib/../types/context.d";
-  import type { Upvote } from "$lib/../types/database";
 
   import { useChatroomContext } from "$lib/chatroomContext";
 
@@ -25,25 +24,6 @@
 
   // Fetch all the channel and message data on mount.
   onMount(() => {
-    const fetchData = async () => {
-      const {
-        channelsData: remoteChannelsData,
-        messagesData: remoteMessagesData,
-        upvotesData: remoteUpvotesData
-      } = await fetchDatabaseData();
-      context.channels = remoteChannelsData as Channel[];
-      if (context.channels.length == 0) return;
-
-      context.activeChannelId = context.channels[0]!["id"];
-      (remoteUpvotesData as Map<string, Upvote[]>).forEach((value, key) => {
-        context.upvotes.set(key, value);
-      });
-      (remoteMessagesData as Map<string, Message[]>).forEach((value, key) => {
-        context.messages.set(key, value);
-      });
-    };
-    fetchData();
-
     const channel = supabase
       .channel("messages_changes")
       .on(
@@ -58,6 +38,7 @@
           let oldMessages: Message[] = context.messages.get(context.activeChannelId!) ?? [];
           switch (eventType) {
             case "INSERT":
+              console.log("Insert occured!");
               context.messages.set(context.activeChannelId!, [
                 ...oldMessages,
                 payload.new as Message
@@ -66,6 +47,7 @@
             case "UPDATE":
               break;
             case "DELETE":
+              console.log("Delete occured!");
               context.messages.set(
                 context.activeChannelId!,
                 oldMessages.filter((msg) => msg.id != payload.old["id"])
@@ -122,6 +104,7 @@
         <p class="align-middle self-center">No active channel selected</p>
       {/if}
     </div>
+    <!-- If user is currently replying to a message, show the message he is replying to -->
     {#if context.replyMessagesId.get(context.activeChannelId ?? "")}
       <div
         class="
@@ -131,7 +114,7 @@
       >
         <div>
           {findMessageById(context, context.replyMessagesId.get(context.activeChannelId!)!)!
-            .username}<br />
+            .user_id}<br />
           {findMessageById(context, context.replyMessagesId.get(context.activeChannelId!)!)!
             .content}
         </div>
