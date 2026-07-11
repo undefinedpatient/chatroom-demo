@@ -97,7 +97,7 @@
               type="button"
               class="w-full text-left px-4 py-2.5 hover:bg-muted/60 transition-colors text-sm flex justify-between items-center {context.userId ===
               user.id
-                ? 'bg-primary/10 font-medium border-l-2 border-primary'
+                ? 'bg-primary/20 font-medium border-l-2 border-b-0 border-t-0 border-primary'
                 : 'border-l-2 border-transparent'}"
               onclick={() => changeUser(user)}
             >

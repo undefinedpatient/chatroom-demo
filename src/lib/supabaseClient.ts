@@ -67,3 +67,44 @@ export async function sendMessage(
     return;
   }
 }
+
+export async function triggerUpvote(context: Context, messageId: string) {
+  const isUpvoted: boolean = !!context.upvotes
+    .get(messageId)
+    ?.some((vote) => vote.user_id === context.userId);
+  if (isUpvoted) {
+    await supabase
+      .from("upvotes")
+      .delete()
+      .eq("message_id", messageId)
+      .eq("user_id", context.userId);
+    const newUpvotes: Upvote[] =
+      context.upvotes
+        .get(messageId)
+        ?.filter((vote) => vote.message_id != messageId || vote.user_id != context.userId) || [];
+    context.upvotes.set(messageId, newUpvotes);
+  } else {
+    const newRow: Upvote = {
+      message_id: messageId,
+      user_id: context.userId
+    };
+    const { error } = await supabase.from("upvotes").insert([newRow]).select();
+    if (error) {
+      throw error;
+    }
+    const newUpvote: Upvote = {
+      message_id: messageId,
+      user_id: context.userId
+    };
+    const oldUpvotes: Upvote[] = context.upvotes.get(messageId) || [];
+    context.upvotes.set(messageId, [...oldUpvotes, newUpvote]);
+  }
+}
+
+export async function deleteMessage(messageId: string) {
+  const res = await supabase.from("messages").delete().eq("id", messageId);
+  if (res.error) {
+    throw res.error;
+  }
+  // The DataBase will then boardcast the deletion.
+}
