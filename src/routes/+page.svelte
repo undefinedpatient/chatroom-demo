@@ -141,10 +141,10 @@
   </div>
 
   <Chatroom
-    class="{activeTab === 'chat' ? 'w-[128]' : 'w-0'}  flex flex-col transition-all overflow-hidden"
+    class="{activeTab === 'chat' ? 'w-lg' : 'w-0'}  flex flex-col transition-all overflow-hidden"
   />
   <div
-    class="{activeTab === 'bot' ? 'w-[128]' : 'w-0'} flex flex-col transition-all overflow-hidden
+    class="{activeTab === 'bot' ? 'w-lg' : 'w-0'} flex flex-col transition-all overflow-hidden
 		justify-center items-center
 	"
   >

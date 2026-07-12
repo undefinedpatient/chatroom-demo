@@ -41,30 +41,14 @@
   const suggestions = $derived.by(() => {
     if (!showMentionsMenu) return [];
     const q = mentionQuery.toLowerCase();
-
-    const roleItems: SuggestionItem[] = [
-      {
-        id: "role-instructor",
-        label: "@instructor",
-        type: "role",
-        name: "instructor",
-        colorClass: "text-rose-400 bg-rose-400/10 border-rose-400/30"
-      },
-      {
-        id: "role-ta",
-        label: "@ta",
-        type: "role",
-        name: "ta",
-        colorClass: "text-indigo-400 bg-indigo-400/10 border-indigo-400/30"
-      },
-      {
-        id: "role-student",
-        label: "@student",
-        type: "role",
-        name: "student",
-        colorClass: "text-amber-400 bg-amber-400/10 border-amber-400/30"
-      }
-    ];
+    const roles = ["instructor", "ta", "student"];
+    const roleItems: SuggestionItem[] = roles.map((r) => ({
+      id: `role-${r}`,
+      label: `@${r}`,
+      type: "role" as const,
+      name: r,
+      colorClass: "text-amber-400 bg-amber-400/10 border-amber-400/30"
+    }));
 
     const userItems: SuggestionItem[] = context.users.map((u) => ({
       id: `user-${u.id}`,
@@ -75,9 +59,8 @@
     }));
 
     const allItems = [...roleItems, ...userItems];
-
-    if (!q) return allItems;
-    return allItems.filter((item) => item.name.toLowerCase().includes(q));
+    if (!q.slice(1)) return allItems;
+    return allItems.filter((item) => item.name.toLowerCase().includes(q.slice(1)));
   });
 
   function handleInput(event: Event) {
@@ -98,20 +81,26 @@
   }
 
   function handleKeyDown(event: KeyboardEvent) {
-    if (showMentionsMenu && suggestions.length > 0) {
-      if (event.key === "ArrowDown") {
+    if (!showMentionsMenu || !(suggestions.length > 0)) {
+      if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
-        selectedIndex = (selectedIndex + 1) % suggestions.length;
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        selectedIndex = (selectedIndex - 1 + suggestions.length) % suggestions.length;
-      } else if (event.key === "Enter" || event.key === "Tab") {
-        event.preventDefault();
-        selectSuggestion(suggestions[selectedIndex]!);
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        showMentionsMenu = false;
+        sendMessage(context, messageInputText);
+        messageInputText = "";
       }
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      selectedIndex = (selectedIndex + 1) % suggestions.length;
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      selectedIndex = (selectedIndex - 1 + suggestions.length) % suggestions.length;
+    } else if (event.key === "Enter" || event.key === "Tab") {
+      event.preventDefault();
+      selectSuggestion(suggestions[selectedIndex]!);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      showMentionsMenu = false;
     }
   }
 

@@ -24,7 +24,7 @@
   const sender: User = findUserById(context, message.user_id!)!;
   // Highlight bubble if the message mentions current user name or role
   const isHighlighted: boolean = $derived(
-    context.user &&
+    context.user != null &&
       (message.content.includes(`@${context.user.role}`) ||
         message.content.includes(`@${context.user.name}`)) &&
       message.user_id !== context.user.id
@@ -71,7 +71,7 @@
       <br />
 
       <!-- Render Tokenized Content with Tag Badges -->
-      <div class="whitespace-pre-wrap text-sm leading-relaxed">
+      <div class="whitespace-pre-wrap text-sm select-text">
         {#each parseMessage(context, message.content) as token (token.id)}
           {#if token.type === "role"}
             <span
