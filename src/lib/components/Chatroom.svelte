@@ -37,6 +37,7 @@
    *	Keep track of last read timestamps per channel, reactive to the logged in user.
    */
   let lastReadTimestamps: Record<string, string> = $state({});
+  let lastActiveChannelId: string | null = null;
 
   const suggestions = $derived.by(() => {
     if (!showMentionsMenu) return [];
@@ -145,6 +146,7 @@
   onMount(() => {
     const handleWindowClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
+      // If not click in the textarea, remove the mention menu.
       if (!target.closest(".mentions-dropdown-container") && !target.closest("textarea")) {
         showMentionsMenu = false;
       }
@@ -163,7 +165,7 @@
         (payload) => {
           const eventType = payload.eventType;
           let newMessage: Message = payload.new as Message;
-          let oldMessages: Message[] = context.messages.get(context.activeChannelId!) ?? [];
+          let oldMessages: Message[] = context.messages.get(newMessage.channel_id!) ?? [];
           switch (eventType) {
             case "INSERT":
               context.messages.set(newMessage.channel_id!, [...oldMessages, newMessage]);
@@ -233,10 +235,13 @@
       selectedIndex = 0;
     }
   });
+
   // Auto Scrolling.
   $effect(() => {
     const activeChannel = context.activeChannelId;
     const messages = activeChannel ? context.messages.get(activeChannel) : null;
+    const channelChanged = activeChannel !== lastActiveChannelId;
+    lastActiveChannelId = activeChannel;
 
     if (viewportElement && messages) {
       // Access length to establish a dependency on messages updates
@@ -244,14 +249,22 @@
 
       tick().then(() => {
         if (viewportElement) {
-          const percentage =
-            viewportElement.scrollTop /
-            (viewportElement.scrollHeight - viewportElement.clientHeight);
-          if (percentage > 0.8) {
+          if (channelChanged) {
+            console.log("asdad");
             viewportElement.scrollTo({
               top: viewportElement.scrollHeight,
-              behavior: "smooth"
+              behavior: "instant"
             });
+          } else {
+            const percentage =
+              viewportElement.scrollTop /
+              (viewportElement.scrollHeight - viewportElement.clientHeight);
+            if (percentage > 0.8) {
+              viewportElement.scrollTo({
+                top: viewportElement.scrollHeight,
+                behavior: "smooth"
+              });
+            }
           }
         }
       });
@@ -361,7 +374,14 @@
         {#each context.channels as channel (channel.id)}
           <Button
             onclick={() => {
-              context.activeChannelId = channel.id;
+              if (context.activeChannelId === channel.id) {
+                viewportElement?.scrollTo({
+                  top: viewportElement.scrollHeight,
+                  behavior: "smooth"
+                });
+              } else {
+                context.activeChannelId = channel.id;
+              }
             }}
             class="h-full text-left px-3 py-2 text-sm transition-color duration-200 cursor-pointer flex items-center gap-1.5
 					{context.activeChannelId === channel.id
