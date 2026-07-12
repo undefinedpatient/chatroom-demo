@@ -28,6 +28,6 @@ export function findMessageById(context: Context, id: string): Message | null {
 }
 
 export function findUserById(context: Context, id: string): User | null {
-  const user = context.users.find((value: Message) => value.id === id);
+  const user = context.users.find((value: User) => value.id === id);
   return user ?? null;
 }

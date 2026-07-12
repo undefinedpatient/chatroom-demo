@@ -1,10 +1,9 @@
 import type { SvelteMap } from "svelte/reactivity";
-import type { Channel, Message } from "./database.types";
-import type { Upvote } from "./database";
+import type { Channel, Message, Upvote, User } from "./database";
 
 // Everything the user needs to know.
 export type Context = {
-  userId: string;
+  user: User | null;
 
   // Local DB data.
   channels: Channel[]; // Local channels data.

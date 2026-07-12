@@ -5,14 +5,14 @@
   import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
   import Button from "$lib/components/ui/button/button.svelte";
   import MessageBubble from "$lib/components/MessageBubble.svelte";
-  import { findMessageById } from "$lib/utils";
-  import { Input } from "$lib/components/ui/input";
+  import { findMessageById, findUserById } from "$lib/utils";
   import { tick } from "svelte";
 
   import type { Message } from "$lib/../types/database.d";
   import type { Context } from "$lib/../types/context.d";
 
   import { useChatroomContext } from "$lib/chatroomContext";
+  import Textarea from "./ui/textarea/textarea.svelte";
 
   let { class: className = "" } = $props();
 
@@ -35,25 +35,34 @@
         },
         (payload) => {
           const eventType = payload.eventType;
+          let newMessage: Message = payload.new as Message;
           let oldMessages: Message[] = context.messages.get(context.activeChannelId!) ?? [];
           switch (eventType) {
             case "INSERT":
-              console.log("Insert occured!");
-              context.messages.set(context.activeChannelId!, [
-                ...oldMessages,
-                payload.new as Message
-              ]);
+              context.messages.set(newMessage.channel_id!, [...oldMessages, newMessage]);
               break;
-            case "UPDATE":
+            case "UPDATE": {
+              if (newMessage.channel_id) {
+                context.messages.set(
+                  newMessage.channel_id,
+                  oldMessages.map((msg) => (msg.id === newMessage.id ? newMessage : msg))
+                );
+              }
               break;
-            case "DELETE":
-              console.log("Delete occured!");
-              context.messages.set(
-                context.activeChannelId!,
-                oldMessages.filter((msg) => msg.id != payload.old["id"])
-              );
-
+            }
+            case "DELETE": {
+              const deletedId: string = payload.old.id;
+              for (const [channelId, messages] of context.messages.entries()) {
+                if (messages.some((msg) => msg.id === deletedId)) {
+                  context.messages.set(
+                    channelId,
+                    messages.filter((msg) => msg.id !== deletedId)
+                  );
+                  break;
+                }
+              }
               break;
+            }
           }
         }
       )
@@ -109,12 +118,18 @@
       <div
         class="
 					absolute left-4 right-4 bottom-4
-					flex justify-between
-					p-4 border rounded bg-card text-card-foreground shadow"
+					flex justify-between max-h-32 overflow-hidden text-ellipsis
+					p-4 border rounded bg-card text-card-foreground shadow
+					"
       >
-        <div>
-          {findMessageById(context, context.replyMessagesId.get(context.activeChannelId!)!)!
-            .user_id}<br />
+        <div class="w-[80%]">
+          <b
+            >{findUserById(
+              context,
+              findMessageById(context, context.replyMessagesId.get(context.activeChannelId!)!)!
+                .user_id!
+            )?.name}</b
+          ><br />
           {findMessageById(context, context.replyMessagesId.get(context.activeChannelId!)!)!
             .content}
         </div>
@@ -130,11 +145,7 @@
   <!-- Send Message Area -->
   <div class="relative border-sidebar bg-sidebar-accent">
     <div class="max-w-4xl mp-4 p-4 mx-auto flex gap-2 border-t border-slate-800">
-      <Input
-        type="text"
-        bind:value={messageInputText}
-        placeholder="Message #{context.activeChannelId}"
-      />
+      <Textarea bind:value={messageInputText} placeholder="Message #{context.activeChannelId}" />
       <Button
         onclick={async () => {
           await sendMessage(context, messageInputText);

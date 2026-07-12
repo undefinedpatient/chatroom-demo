@@ -52,16 +52,16 @@ export async function sendMessage(
   message: string
 ): Promise<void> {
   if (!message.trim() || !context.activeChannelId) return;
-  if (!context.userId.trim()) return;
+  if (!context.user) return;
 
   const newMessage = {
     channel_id: context.activeChannelId,
     content: message,
-    user_id: context.userId,
+    user_id: context.user?.id,
     parent_id: context.replyMessagesId.get(context.activeChannelId) ?? null
   };
 
-  const { data, error } = await supabase.from("messages").insert([newMessage]).select();
+  const { error } = await supabase.from("messages").insert([newMessage]).select();
   if (error) {
     console.error("Failed to send message to database:", error.message);
     return;
@@ -71,22 +71,22 @@ export async function sendMessage(
 export async function triggerUpvote(context: Context, messageId: string) {
   const isUpvoted: boolean = !!context.upvotes
     .get(messageId)
-    ?.some((vote) => vote.user_id === context.userId);
+    ?.some((vote) => vote.user_id === context.user?.id);
   if (isUpvoted) {
     await supabase
       .from("upvotes")
       .delete()
       .eq("message_id", messageId)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.user?.id);
     const newUpvotes: Upvote[] =
       context.upvotes
         .get(messageId)
-        ?.filter((vote) => vote.message_id != messageId || vote.user_id != context.userId) || [];
+        ?.filter((vote) => vote.message_id != messageId || vote.user_id != context.user?.id) || [];
     context.upvotes.set(messageId, newUpvotes);
   } else {
     const newRow: Upvote = {
       message_id: messageId,
-      user_id: context.userId
+      user_id: context.user!.id
     };
     const { error } = await supabase.from("upvotes").insert([newRow]).select();
     if (error) {
@@ -94,7 +94,7 @@ export async function triggerUpvote(context: Context, messageId: string) {
     }
     const newUpvote: Upvote = {
       message_id: messageId,
-      user_id: context.userId
+      user_id: context.user!.id
     };
     const oldUpvotes: Upvote[] = context.upvotes.get(messageId) || [];
     context.upvotes.set(messageId, [...oldUpvotes, newUpvote]);

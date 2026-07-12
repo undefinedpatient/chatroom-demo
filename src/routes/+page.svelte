@@ -15,7 +15,7 @@
 
   // Current chatroom context.
   let context: Context = $state({
-    userId: "",
+    user: null,
 
     channels: [],
     messages: new SvelteMap(),
@@ -26,8 +26,8 @@
     activeChannelId: null
   });
 
-  function changeUser(user: User) {
-    context.userId = user.id;
+  function changeUser(id: string) {
+    context.user = context.users.find((user) => id == user.id) ?? null;
   }
 
   setChatroomContext(context);
@@ -75,10 +75,10 @@
         <h3 class="text-lg font-semibold tracking-tight text-foreground">Active Account</h3>
         <p class="text-sm text-muted-foreground">
           Currently logged in as: <strong class="text-primary"
-            >{context.users.find((u) => u.id === context.userId)?.username ?? "None"}</strong
+            >{context.user?.name ?? "None"}</strong
           >
-          {#if context.userId}
-            <span class="text-xs font-mono opacity-60 block">({context.userId})</span>
+          {#if context.user}
+            <span class="text-xs font-mono opacity-60 block">({context.user.id})</span>
           {/if}
         </p>
       </div>
@@ -91,25 +91,27 @@
             >Select User Identity</span
           >
         </div>
+        <!-- List each available user. -->
         <div class="divide-y max-h-60 overflow-y-auto">
           {#each context.users as user (user.id)}
             <button
               type="button"
-              class="w-full text-left px-4 py-2.5 hover:bg-muted/60 transition-colors text-sm flex justify-between items-center {context.userId ===
-              user.id
+              class="w-full flex justify-between items-center
+							text-left px-4 py-2.5
+							hover:bg-muted/60 transition-colors text-sm
+							{context.user?.id === user.id
                 ? 'bg-primary/20 font-medium border-l-2 border-b-0 border-t-0 border-primary'
-                : 'border-l-2 border-transparent'}"
-              onclick={() => changeUser(user)}
+                : 'border-l-2 border-b-0 border-t-0 border-transparent'}"
+              onclick={() => changeUser(user.id)}
             >
               <div class="flex flex-col">
-                <span class="text-xs text-muted-foreground font-mono"
-                  >{user.username.slice(0, 16)}</span
+                <span class="text-xs text-muted-foreground font-mono">{user.name.slice(0, 16)}</span
                 >
               </div>
               <span
                 class="text-xs font-semibold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground"
               >
-                {user.type}
+                {user.role}
               </span>
             </button>
           {/each}
@@ -139,10 +141,10 @@
   </div>
 
   <Chatroom
-    class="{activeTab === 'chat' ? 'w-96' : 'w-0'}  flex flex-col transition-all overflow-hidden"
+    class="{activeTab === 'chat' ? 'w-[128]' : 'w-0'}  flex flex-col transition-all overflow-hidden"
   />
   <div
-    class="{activeTab === 'bot' ? 'w-96' : 'w-0'} flex flex-col transition-all overflow-hidden
+    class="{activeTab === 'bot' ? 'w-[128]' : 'w-0'} flex flex-col transition-all overflow-hidden
 		justify-center items-center
 	"
   >

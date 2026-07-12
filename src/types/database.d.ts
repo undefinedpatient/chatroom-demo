@@ -2,7 +2,6 @@ export type Channel = Database["public"]["Tables"]["channels"]["Row"];
 export type Message = Database["public"]["Tables"]["messages"]["Row"];
 export type Upvote = Database["public"]["Tables"]["upvotes"]["Row"];
 export type User = Database["public"]["Tables"]["users"]["Row"];
-export type UserType = "Instructor" | "TeachingAssistant" | "Student";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -117,18 +116,18 @@ export type Database = {
       users: {
         Row: {
           id: string;
-          type: string;
-          username: string;
+          name: string;
+          role: Database["public"]["Enums"]["role"];
         };
         Insert: {
           id?: string;
-          type: string;
-          username: string;
+          name: string;
+          role?: Database["public"]["Enums"]["role"];
         };
         Update: {
           id?: string;
-          type?: string;
-          username?: string;
+          name?: string;
+          role?: Database["public"]["Enums"]["role"];
         };
         Relationships: [];
       };
@@ -140,7 +139,7 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
-      [_ in never]: never;
+      role: "student" | "ta" | "instructor";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -261,6 +260,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {}
+    Enums: {
+      role: ["student", "ta", "instructor"]
+    }
   }
 } as const;
