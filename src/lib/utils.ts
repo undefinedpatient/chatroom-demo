@@ -31,3 +31,42 @@ export function findUserById(context: Context, id: string): User | null {
   const user = context.users.find((value: User) => value.id === id);
   return user ?? null;
 }
+
+// Parse @role and @username tags
+interface Token {
+  id: number;
+  type: "text" | "role" | "user";
+  text: string;
+  targetName?: string;
+}
+
+export function parseMessage(context: Context, content: string): Token[] {
+  if (!content) return [];
+
+  // Sort usernames by length descending to match longer/full names first
+  const userNames = context.users.map((u) => u.name).sort((a, b) => b.length - a.length);
+
+  const roles = ["instructor", "ta", "student"];
+
+  // Add \ in front of all special symbols.
+  const escapeRegex = (s: string) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+  // @instructor\b|@ta\b|@ta\b
+  const rolePattern = roles.map((word) => `@${word}\\b`).join("|");
+  const userPattern = userNames.map((u) => `@${escapeRegex(u)}\\b`).join("|");
+
+  const combinedPattern: RegExp = new RegExp(`(${rolePattern}|${userPattern})`, "g");
+
+  const parts = content.split(combinedPattern);
+  return parts.map((part, idx) => {
+    if (part.startsWith("@")) {
+      const nameWithoutAt = part.slice(1); // "@ABC" => "ABC"
+      if (roles.includes(nameWithoutAt)) {
+        return { id: idx, type: "role" as const, text: part, targetName: nameWithoutAt };
+      } else {
+        return { id: idx, type: "user" as const, text: part, targetName: nameWithoutAt };
+      }
+    }
+    return { id: idx, type: "text" as const, text: part };
+  });
+}
